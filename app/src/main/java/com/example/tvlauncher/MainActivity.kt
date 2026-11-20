@@ -28,14 +28,13 @@ import java.util.Locale
 // ---- Customise your look here ----
 private val BACKGROUND = Color.BLACK
 private val TEXT = Color.WHITE
-private val TILE_FILL = Color.argb(40, 255, 255, 255)
-private val TILE_FOCUS = Color.argb(120, 255, 255, 255)
-private val TILE_EDGE = Color.argb(90, 255, 255, 255)
-private const val PILL_CURVE = 200f   // large value = fully rounded pill
-private const val TILE_CURVE = 40f
+private val TILE_FOCUS = Color.argb(45, 255, 255, 255)  // soft fill behind the app you're on
+private const val PILL_CURVE = 200f      // large value = fully rounded pill
+private const val TILE_CURVE = 36f      // roundness of the focus fill
 private const val COLUMNS = 5
-private const val GLOW_SPACE = 28     // how far the glow reaches around the pill
+private const val GLOW_SPACE = 28       // how far the glow reaches around the pill
 private const val PILL_TOP_OFFSET = 140 // how far the pill sits below the top edge
+private const val ICON_SIZE = 110       // app icon size in pixels
 
 // Apps that should never appear in the grid (email apps, plus this launcher)
 private val HIDDEN_PACKAGES = setOf(
@@ -71,7 +70,7 @@ class MainActivity : Activity() {
         // Top padding pushes the pill down from the top edge, horizontally centred
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(80, PILL_TOP_OFFSET, 80, 40)
+            setPadding(100, PILL_TOP_OFFSET, 100, 50)
         }
 
         clock = TextView(this).apply {
@@ -94,8 +93,8 @@ class MainActivity : Activity() {
 
         grid = GridView(this).apply {
             numColumns = COLUMNS
-            verticalSpacing = 36
-            horizontalSpacing = 36
+            verticalSpacing = 30
+            horizontalSpacing = 30
             stretchMode = GridView.STRETCH_COLUMN_WIDTH
             selector = ColorDrawable(Color.TRANSPARENT)
             adapter = AppAdapter()
@@ -105,7 +104,7 @@ class MainActivity : Activity() {
         }
         column.addView(
             grid,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = 40 }
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = 50 }
         )
 
         screen.addView(
@@ -181,12 +180,11 @@ class MainActivity : Activity() {
         packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it) }
     }
 
-    // Tile background: frosted glass that brightens when focused
+    // Tile background: invisible normally, a soft light fill when focused. No outline.
     private fun tileDrawable(focused: Boolean): Drawable = GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
         cornerRadius = TILE_CURVE
-        setColor(if (focused) TILE_FOCUS else TILE_FILL)
-        setStroke(3, TILE_EDGE)
+        setColor(if (focused) TILE_FOCUS else Color.TRANSPARENT)
     }
 
     private inner class AppAdapter : BaseAdapter() {
@@ -199,30 +197,30 @@ class MainActivity : Activity() {
             return LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(20, 30, 20, 30)
+                setPadding(16, 24, 16, 24)
                 isFocusable = true
                 background = tileDrawable(false)
 
                 addView(
                     ImageView(this@MainActivity).apply { setImageDrawable(item.icon) },
-                    LinearLayout.LayoutParams(130, 130)
+                    LinearLayout.LayoutParams(ICON_SIZE, ICON_SIZE)
                 )
                 addView(
                     TextView(this@MainActivity).apply {
                         text = item.label
-                        textSize = 18f
+                        textSize = 20f
                         setTextColor(TEXT)
                         maxLines = 1
                         ellipsize = TextUtils.TruncateAt.END
                         gravity = Gravity.CENTER
-                        setPadding(0, 16, 0, 0)
+                        setPadding(0, 14, 0, 0)
                     },
                     LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 )
 
                 setOnFocusChangeListener { v, hasFocus ->
                     v.background = tileDrawable(hasFocus)
-                    val scale = if (hasFocus) 1.08f else 1f
+                    val scale = if (hasFocus) 1.1f else 1f
                     v.animate().scaleX(scale).scaleY(scale).setDuration(120).start()
                 }
             }
