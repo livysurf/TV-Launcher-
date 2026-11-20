@@ -6,11 +6,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
-import android.media.AudioAttributes
-import android.media.AudioFormat
 import android.media.AudioTrack
 import android.net.Uri
 import android.os.Bundle
@@ -33,81 +29,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.Random
-import kotlin.math.PI
-import kotlin.math.sin
-
-// ---- Customise your look here ----
-private val BACKGROUND = Color.BLACK
-private val TEXT = Color.WHITE
-private val SUBTEXT = Color.argb(180, 255, 255, 255)
-private val TILE_FOCUS = Color.argb(45, 255, 255, 255)
-private val TILE_GLOW = Color.argb(70, 255, 255, 255)
-private val PANEL_FILL = Color.argb(16, 255, 255, 255)
-private const val PANEL_CURVE = 40f
-private const val PILL_CURVE = 200f
-private const val TILE_CURVE = 30f
-private const val GLOW_SPACE = 28
-private const val PILL_TOP_MARGIN = 0
-private const val CONTENT_TOP = 150
-private const val ICON_SIZE = 72
-private const val TILE_WIDTH = 130
-private const val TILE_SPACING = 14
-private const val CLOCK_TEXT_SIZE = 16f
-private const val LABEL_TEXT_SIZE = 13f
-private const val DRIFT_DISTANCE = 60f
-private const val DRIFT_MS = 9000L
-private const val STAR_COUNT = 45
-private const val PILL_BREATH_MS = 2400L
-
-// Sound settings
-private const val SAMPLE_RATE = 44100
-private const val FOCUS_VOLUME = 0.22
-private const val CLICK_VOLUME = 0.35
-
-// Apps that should never appear in the launcher (email apps, plus this launcher)
-private val HIDDEN_PACKAGES = setOf(
-    "com.example.tvemail",
-    "com.google.android.gm",
-    "com.google.android.gm.lite",
-    "com.microsoft.office.outlook",
-    "com.yahoo.mobile.client.android.mail",
-    "com.samsung.android.email.provider"
-)
-
-data class AppItem(val label: String, val pkg: String, val icon: Drawable)
-
-// Builds a short sound that sweeps from one pitch to another, with a soft fade in and out
-private fun buildSweep(fromHz: Double, toHz: Double, ms: Int, volume: Double): AudioTrack {
-    val n = SAMPLE_RATE * ms / 1000
-    val buffer = ShortArray(n)
-    var phase = 0.0
-    for (i in 0 until n) {
-        val t = i.toDouble() / n
-        val freq = fromHz + (toHz - fromHz) * t
-        phase += 2 * PI * freq / SAMPLE_RATE
-        val envelope = sin(PI * t)
-        buffer[i] = (sin(phase) * envelope * volume * Short.MAX_VALUE).toInt().toShort()
-    }
-    val track = AudioTrack.Builder()
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-        )
-        .setAudioFormat(
-            AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(SAMPLE_RATE)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build()
-        )
-        .setBufferSizeInBytes(n * 2)
-        .setTransferMode(AudioTrack.MODE_STATIC)
-        .build()
-    track.write(buffer, 0, n)
-    return track
-}
 
 class MainActivity : Activity() {
     private val apps = mutableListOf<AppItem>()
@@ -140,9 +61,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val screen = FrameLayout(this).apply {
-            setBackgroundColor(BACKGROUND)
-        }
+        val screen = FrameLayout(this).apply { setBackgroundColor(BACKGROUND) }
 
         // Background layers: twinkling stars, then slowly drifting orbs
         screen.addView(starField())
@@ -193,7 +112,6 @@ class MainActivity : Activity() {
             setPadding(100, CONTENT_TOP, 100, 40)
         }
 
-        // Single horizontal row holding every app
         header = TextView(this).apply {
             text = "All apps"
             textSize = 16f
@@ -224,7 +142,6 @@ class MainActivity : Activity() {
             }
         )
 
-        // Hint bar at the bottom
         val hint = TextView(this).apply {
             text = "OK to open   ·   Back to return   ·   Home to reset"
             textSize = 14f
@@ -244,7 +161,7 @@ class MainActivity : Activity() {
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         )
 
-        // Dynamic island pinned to the top edge, centred horizontally, drawn above everything
+        // Dynamic island pinned to the top edge, centred, drawn above everything
         clock = TextView(this).apply {
             text = timeNow()
             textSize = CLOCK_TEXT_SIZE
@@ -263,9 +180,7 @@ class MainActivity : Activity() {
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            ).apply {
-                topMargin = PILL_TOP_MARGIN
-            }
+            ).apply { topMargin = PILL_TOP_MARGIN }
         )
         // Slow breathing animation on the island
         animators.add(ObjectAnimator.ofFloat(pill, View.ALPHA, 0.8f, 1f).apply {
@@ -304,12 +219,10 @@ class MainActivity : Activity() {
         track.play()
     }
 
-    // Moves focus to the first app in the row, so the remote works straight away
     private fun focusFirstApp() {
         appRow.getChildAt(0)?.requestFocus()
     }
 
-    // Top bar button: frosted pill that brightens when focused
     private fun topBarButton(label: String, onClick: () -> Unit): Button = Button(this).apply {
         text = label
         textSize = 16f
@@ -334,12 +247,6 @@ class MainActivity : Activity() {
         ).apply { leftMargin = 16 }
     }
 
-    private fun barDrawable(focused: Boolean): Drawable = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = PILL_CURVE
-        setColor(if (focused) TILE_FOCUS else PANEL_FILL)
-    }
-
     // Opens the Play Store search so you can add new apps to the TV
     private fun openStore() {
         val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=tv%20apps"))
@@ -354,14 +261,13 @@ class MainActivity : Activity() {
         try {
             startActivity(Intent(Settings.ACTION_SETTINGS))
         } catch (e: ActivityNotFoundException) {
-            // Settings screen not available on this device, nothing to open
+            // No settings screen on this device
         }
     }
 
     private fun timeNow(): String =
         SimpleDateFormat("EEE, MMM d  ·  h:mm a", Locale.getDefault()).format(Date())
 
-    // "Good morning", "Good afternoon" or "Good evening", based on the time
     private fun greetingText(): String {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         return when (hour) {
@@ -438,40 +344,12 @@ class MainActivity : Activity() {
         return orb
     }
 
-    // Stacked rings: four white rings, brightest near the pill, then the black pill on top
-    private fun pillDrawable(): Drawable {
-        fun ring(alpha: Int) = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = PILL_CURVE
-            setColor(Color.argb(alpha, 255, 255, 255))
-        }
-        val black = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = PILL_CURVE
-            setColor(Color.BLACK)
-        }
-        val layers = LayerDrawable(arrayOf(ring(35), ring(80), ring(160), ring(230), black))
-        layers.setLayerInset(0, 0, 0, 0, 0)
-        layers.setLayerInset(1, 6, 6, 6, 6)
-        layers.setLayerInset(2, 12, 12, 12, 12)
-        layers.setLayerInset(3, 18, 18, 18, 18)
-        layers.setLayerInset(4, GLOW_SPACE, GLOW_SPACE, GLOW_SPACE, GLOW_SPACE)
-        return layers
-    }
-
-    // Very faint rounded panel behind the content
-    private fun panelDrawable(): Drawable = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = PANEL_CURVE
-        setColor(PANEL_FILL)
-    }
-
     // True for email apps, so they stay out of the launcher
     private fun isHidden(pkg: String, label: String): Boolean {
         if (pkg == packageName) return true
         if (pkg in HIDDEN_PACKAGES) return true
         val text = (pkg + " " + label).lowercase(Locale.getDefault())
-        return text.contains("mail") || text.contains("gmail") || text.contains("outlook")
+        return text.contains("mail") || text.contains("outlook")
     }
 
     // Finds every app with a TV or phone launcher icon, minus the hidden ones
@@ -493,7 +371,6 @@ class MainActivity : Activity() {
         apps.addAll(found.sortedBy { it.label.lowercase(Locale.getDefault()) })
         header.text = "All apps  ·  ${apps.size}"
 
-        // Put every app into the one horizontal row
         appRow.removeAllViews()
         apps.forEach { item ->
             appRow.addView(
@@ -512,24 +389,41 @@ class MainActivity : Activity() {
         startActivity(intent)
     }
 
-    // Focused tile: soft fill with a faint halo. Unfocused: fully invisible.
-    private fun tileDrawable(focused: Boolean): Drawable {
-        val fill = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = TILE_CURVE
-            setColor(if (focused) TILE_FOCUS else Color.TRANSPARENT)
-        }
-        if (!focused) return fill
-        val halo = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = TILE_CURVE + 6
-            setColor(TILE_GLOW)
-        }
-        return LayerDrawable(arrayOf(halo, fill)).apply {
-            setLayerInset(1, 4, 4, 4, 4)
-        }
-    }
-
     // One small app tile: icon on top, short name below
     private fun makeTile(item: AppItem): LinearLayout {
-        return LinearLayout(this).ap
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(10, 16, 10, 16)
+            isFocusable = true
+            background = tileDrawable(false)
+
+            addView(
+                ImageView(this@MainActivity).apply { setImageDrawable(item.icon) },
+                LinearLayout.LayoutParams(ICON_SIZE, ICON_SIZE)
+            )
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = item.label
+                    textSize = LABEL_TEXT_SIZE
+                    setTextColor(TEXT)
+                    typeface = appFont
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                    gravity = Gravity.CENTER
+                    setPadding(0, 10, 0, 0)
+                },
+                LinearLayout.LayoutParams(TILE_WIDTH - 20, ViewGroup.LayoutParams.WRAP_CONTENT)
+            )
+
+            setOnClickListener { launch(item.pkg) }
+            setOnFocusChangeListener { v, hasFocus ->
+                v.background = tileDrawable(hasFocus)
+                val scale = if (hasFocus) 1.12f else 1f
+                v.animate().scaleX(scale).scaleY(scale).setDuration(150).start()
+                onAppFocused(if (hasFocus) item.label else null)
+                if (hasFocus) play(focusSound)
+            }
+        }
+    }
+}
