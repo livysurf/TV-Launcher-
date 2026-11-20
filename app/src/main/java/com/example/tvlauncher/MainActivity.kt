@@ -40,18 +40,18 @@ import kotlin.math.sin
 private val BACKGROUND = Color.BLACK
 private val TEXT = Color.WHITE
 private val SUBTEXT = Color.argb(180, 255, 255, 255)
-private val TILE_FOCUS = Color.argb(45, 255, 255, 255)  // soft fill behind the focused app
-private val TILE_GLOW = Color.argb(70, 255, 255, 255)   // halo around the focused app
-private val PANEL_FILL = Color.argb(16, 255, 255, 255)  // faint panel behind the content
+private val TILE_FOCUS = Color.argb(45, 255, 255, 255)
+private val TILE_GLOW = Color.argb(70, 255, 255, 255)
+private val PANEL_FILL = Color.argb(16, 255, 255, 255)
 private const val PANEL_CURVE = 40f
 private const val PILL_CURVE = 200f
 private const val TILE_CURVE = 30f
 private const val GLOW_SPACE = 28
-private const val PILL_TOP_MARGIN = 0    // 0 = pinned to the very top edge
-private const val CONTENT_TOP = 150      // space reserved for the island
-private const val ICON_SIZE = 72         // app icon size in pixels
-private const val TILE_WIDTH = 130       // width of each app tile in pixels
-private const val TILE_SPACING = 14      // gap between tiles
+private const val PILL_TOP_MARGIN = 0
+private const val CONTENT_TOP = 150
+private const val ICON_SIZE = 72
+private const val TILE_WIDTH = 130
+private const val TILE_SPACING = 14
 private const val CLOCK_TEXT_SIZE = 16f
 private const val LABEL_TEXT_SIZE = 13f
 private const val DRIFT_DISTANCE = 60f
@@ -61,7 +61,7 @@ private const val PILL_BREATH_MS = 2400L
 
 // Sound settings
 private const val SAMPLE_RATE = 44100
-private const val FOCUS_VOLUME = 0.22    // 0.0 to 1.0, quieter = softer
+private const val FOCUS_VOLUME = 0.22
 private const val CLICK_VOLUME = 0.35
 
 // Apps that should never appear in the launcher (email apps, plus this launcher)
@@ -293,7 +293,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (focusSound.playState != AudioTrack.PLAYSTATE_STOPPED || true) focusSound.release()
+        focusSound.release()
         clickSound.release()
     }
 
@@ -521,4 +521,15 @@ class MainActivity : Activity() {
         }
         if (!focused) return fill
         val halo = GradientDrawable().apply {
-           
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = TILE_CURVE + 6
+            setColor(TILE_GLOW)
+        }
+        return LayerDrawable(arrayOf(halo, fill)).apply {
+            setLayerInset(1, 4, 4, 4, 4)
+        }
+    }
+
+    // One small app tile: icon on top, short name below
+    private fun makeTile(item: AppItem): LinearLayout {
+        return LinearLayout(this).ap
