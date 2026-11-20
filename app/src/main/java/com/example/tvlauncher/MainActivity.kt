@@ -10,6 +10,7 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -25,17 +26,16 @@ import java.util.Date
 import java.util.Locale
 
 // ---- Customise your look here ----
-private val WALL_TOP = Color.parseColor("#05070F")
-private val WALL_MID = Color.parseColor("#1A0B3D")
-private val WALL_BOTTOM = Color.parseColor("#06324F")
+private val BACKGROUND = Color.BLACK
 private val TEXT = Color.WHITE
-private val GLASS_TOP = Color.argb(70, 255, 255, 255)
-private val GLASS_BOTTOM = Color.argb(20, 255, 255, 255)
-private val GLASS_FOCUS_TOP = Color.argb(150, 255, 255, 255)
-private val GLASS_FOCUS_BOTTOM = Color.argb(60, 255, 255, 255)
-private val GLASS_EDGE = Color.argb(120, 255, 255, 255)
-private const val CURVE = 40f
+private val TILE_FILL = Color.argb(40, 255, 255, 255)
+private val TILE_FOCUS = Color.argb(120, 255, 255, 255)
+private val TILE_EDGE = Color.argb(90, 255, 255, 255)
+private const val PILL_CURVE = 200f   // large value = fully rounded pill
+private const val TILE_CURVE = 40f
 private const val COLUMNS = 5
+private const val GLOW_SPACE = 28     // how far the glow reaches around the pill
+private const val PILL_TOP_OFFSET = 140 // how far the pill sits below the top edge
 
 // Apps that should never appear in the grid (email apps, plus this launcher)
 private val HIDDEN_PACKAGES = setOf(
@@ -65,30 +65,28 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val screen = FrameLayout(this).apply {
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(WALL_TOP, WALL_MID, WALL_BOTTOM)
-            )
+            setBackgroundColor(BACKGROUND)
         }
-        screen.addView(orb(Color.parseColor("#7B5CFF"), 800, Gravity.TOP or Gravity.START, -240, -220))
-        screen.addView(orb(Color.parseColor("#00C2FF"), 640, Gravity.BOTTOM or Gravity.END, 0, 0))
-        screen.addView(orb(Color.parseColor("#FF6AD5"), 420, Gravity.TOP or Gravity.END, 0, 120))
 
+        // Top padding pushes the pill down from the top edge, horizontally centred
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(80, 40, 80, 40)
+            setPadding(80, PILL_TOP_OFFSET, 80, 40)
         }
 
-        // Floating status pill at the top centre
         clock = TextView(this).apply {
             textSize = 22f
             setTextColor(TEXT)
             gravity = Gravity.CENTER
             setPadding(60, 16, 60, 16)
-            background = glass()
+        }
+        val pill = FrameLayout(this).apply {
+            background = pillDrawable()
+            setPadding(GLOW_SPACE, GLOW_SPACE, GLOW_SPACE, GLOW_SPACE)
+            addView(clock)
         }
         column.addView(
-            clock,
+            pill,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
@@ -129,6 +127,28 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTick)
     }
 
+    // Stacked rings: four white rings, brightest near the pill, then the black pill on top
+    private fun pillDrawable(): Drawable {
+        fun ring(alpha: Int) = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = PILL_CURVE
+            setColor(Color.argb(alpha, 255, 255, 255))
+        }
+        val black = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = PILL_CURVE
+            setColor(Color.BLACK)
+        }
+        // Alpha values control the glow brightness: higher = brighter
+        val layers = LayerDrawable(arrayOf(ring(35), ring(80), ring(160), ring(230), black))
+        layers.setLayerInset(0, 0, 0, 0, 0)
+        layers.setLayerInset(1, 6, 6, 6, 6)
+        layers.setLayerInset(2, 12, 12, 12, 12)
+        layers.setLayerInset(3, 18, 18, 18, 18)
+        layers.setLayerInset(4, GLOW_SPACE, GLOW_SPACE, GLOW_SPACE, GLOW_SPACE)
+        return layers
+    }
+
     // True for email apps, so they stay out of the grid
     private fun isHidden(pkg: String, label: String): Boolean {
         if (pkg == packageName) return true
@@ -161,36 +181,12 @@ class MainActivity : Activity() {
         packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it) }
     }
 
-    private fun orb(color: Int, size: Int, gravity: Int, dx: Int, dy: Int) = View(this).apply {
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            gradientType = GradientDrawable.RADIAL_GRADIENT
-            gradientRadius = size / 2f
-            colors = intArrayOf(color, Color.TRANSPARENT)
-        }
-        layoutParams = FrameLayout.LayoutParams(size, size, gravity).apply {
-            leftMargin = dx
-            topMargin = dy
-        }
-    }
-
-    // Liquid-glass look: tinted body fading top to bottom, plus a bright sheen
-    private fun glass(focused: Boolean = false): Drawable {
-        val body = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            if (focused) intArrayOf(GLASS_FOCUS_TOP, GLASS_FOCUS_BOTTOM)
-            else intArrayOf(GLASS_TOP, GLASS_BOTTOM)
-        ).apply {
-            cornerRadius = CURVE
-            setStroke(3, GLASS_EDGE)
-        }
-        val sheen = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(Color.argb(80, 255, 255, 255), Color.TRANSPARENT)
-        ).apply {
-            cornerRadius = CURVE
-        }
-        return LayerDrawable(arrayOf<Drawable>(body, sheen))
+    // Tile background: frosted glass that brightens when focused
+    private fun tileDrawable(focused: Boolean): Drawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = TILE_CURVE
+        setColor(if (focused) TILE_FOCUS else TILE_FILL)
+        setStroke(3, TILE_EDGE)
     }
 
     private inner class AppAdapter : BaseAdapter() {
@@ -205,7 +201,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER_HORIZONTAL
                 setPadding(20, 30, 20, 30)
                 isFocusable = true
-                background = glass()
+                background = tileDrawable(false)
 
                 addView(
                     ImageView(this@MainActivity).apply { setImageDrawable(item.icon) },
@@ -217,7 +213,7 @@ class MainActivity : Activity() {
                         textSize = 18f
                         setTextColor(TEXT)
                         maxLines = 1
-                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        ellipsize = TextUtils.TruncateAt.END
                         gravity = Gravity.CENTER
                         setPadding(0, 16, 0, 0)
                     },
@@ -225,7 +221,7 @@ class MainActivity : Activity() {
                 )
 
                 setOnFocusChangeListener { v, hasFocus ->
-                    v.background = glass(hasFocus)
+                    v.background = tileDrawable(hasFocus)
                     val scale = if (hasFocus) 1.08f else 1f
                     v.animate().scaleX(scale).scaleY(scale).setDuration(120).start()
                 }
